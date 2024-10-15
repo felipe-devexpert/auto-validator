@@ -1,0 +1,70 @@
+
+<style type="text/css">
+    form {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+    button {
+        margin-top: 100px;
+        padding: 10px;
+    }
+    table {
+        margin-top: 50px;
+        display: flex;
+        justify-content: center;
+    }
+    table tr:nth-child(even) {
+        background-color: white;
+    }
+    select {
+        width: 100%;
+        padding: 10px;
+    }
+</style>
+
+{% extends "admin/base_site.html" %}
+
+{% block content %}
+{% load bootstrap5 %}
+{% bootstrap_css %}
+{% bootstrap_javascript %}
+    <form method="post">
+        {% csrf_token %}
+        <h2 for="provider">Create Server</h2>
+        <table>
+            {% for field_name, field_info in fields.items %}
+                <tr>
+                    <td><label>{{ field_name|capfirst }}:</label></td>
+                    {% if field_info.type == "choice" %}
+                        <td>
+                            <select name="{{ field_name }}">
+                                {% for value in field_info.values %}
+                                    <option value="{{ value }}">{{ value }}</option>
+                                {% endfor %}
+                            </select>
+                        </td>
+                    {% endif %}
+                    {% if field_info.type == "text" %}
+                        <td><input type="text" name="{{ field_name }}" maxlength="{{field_info.max_length}}" placeholder="{{field_info.help_text}}"></td>
+                    {% endif %}
+                    {% if field_info.type == "number" %}
+                        <td><input type="number" name="{{ field_name }}" placeholder="{{field_info.min}} ~ {{field_info.max}} {{field_info.help_text}}"></td>
+                    {% endif %}
+                </tr>
+            {% endfor %}
+        </table>
+        <button class="btn btn-primary" type="submit">Create Server</button>
+        
+    </form>
+    <table>
+        {% for machine in list_of_machines %}
+            <tr>
+                {% for key, value in machine.items %}
+                    <td>{{ key }}: {{ value }}</td>
+                {% endfor %}
+            </tr>
+        {% endfor %}
+    </table>
+{% endblock %}
