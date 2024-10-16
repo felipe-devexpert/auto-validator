@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.db.models import Case, IntegerField, Value, When
-from django.shortcuts import redirect
+from django.shortcuts import redirect, render
 from django.urls import path, reverse
 from rest_framework.authtoken.admin import TokenAdmin
 
@@ -13,7 +13,15 @@ from auto_validator.core.models import (
     UploadedFile,
     ValidatorInstance,
 )
-from auto_validator.core.utils.utils import fetch_and_compare_subnets
+from auto_validator.core.utils.utils import fetch_and_compare_subnets, install_validator_on_remote_server
+
+from auto_validator.core.plugins.plugin_manager import PluginManager
+from auto_validator.core.plugins.linode_plugin import LinodePlugin
+from auto_validator.core.plugins.paperspace_plugin import PaperspacePlugin
+
+plugin_manager = PluginManager()
+plugin_manager.register_plugin('Linode', LinodePlugin)
+plugin_manager.register_plugin('Paperspace', PaperspacePlugin)
 
 admin.site.site_header = "auto_validator Administration"
 admin.site.site_title = "auto_validator"
@@ -48,6 +56,8 @@ class SubnetAdmin(admin.ModelAdmin):
         urls = super().get_urls()
         custom_urls = [
             path("sync-subnets/", self.admin_site.admin_view(self.sync_subnet), name="sync_subnets"),
+            path('<int:subnet_id>/select-provider/', self.admin_site.admin_view(self.select_provider_view), name='select_provider'),
+            path('<int:subnet_id>/<str:provider>/create-server/', self.admin_site.admin_view(self.create_server_view), name='create_server'),
         ]
         return custom_urls + urls
 
@@ -58,7 +68,39 @@ class SubnetAdmin(admin.ModelAdmin):
         extra_context = extra_context or {}
         extra_context["sync_subnets_url"] = reverse("admin:sync_subnets")
         return super().changelist_view(request, extra_context=extra_context)
+    def select_provider_view(self, request, subnet_id):
+        # subnet = Subnet.objects.get(id=subnet_id)
+        if request.method == 'POST':
+            provider = request.POST.get('provider')
+            self.message_user(request, f'{provider} selected')
+            return redirect('admin:create_server', provider=provider, subnet_id=subnet_id)
+        context = {"providers": plugin_manager.get_registered_plugins()}
+        return render(request, 'admin/select_provider.html', context)
 
+    def create_server_view(self, request, subnet_id, provider):
+        # subnet = self.get_object(request, subnet_id)
+        plugin = plugin_manager.get_plugin(provider)
+        if request.method == 'POST':
+            form_data = request.POST.copy()
+            form_data["api_key"] = "1234"
+            form_info = {}
+            for key, value in form_data.items():
+                form_info[key] = value
+            print(form_info)
+            result = plugin.create_machine(form_info)
+            if result.get("status") == "success":
+                self.message_user(request, "Server created successfully")
+            else:
+                self.message_user(request, result.get("data"), level="error")
+            return redirect('admin:core_subnet_changelist')
+        result = plugin.list_available_machines()
+        if result.get("status") == "success":
+            context = {"fields": plugin.get_required_fields(), "provider": provider, "machines_list": result.get("data")}
+        else:
+            self.message_user(request, result.get("data"), level="error")
+        return render(request, 'admin/create_server.html', context)
+    
+    actions  = ["create_server"]
 
 @admin.register(SubnetSlot)
 class SubnetSlotAdmin(admin.ModelAdmin):
@@ -105,6 +147,23 @@ class SubnetSlotAdmin(admin.ModelAdmin):
     is_registered.boolean = True
     is_registered.admin_order_field = "is_registered_sort"
     is_registered.short_description = "Is Registered"
+
+    def install_validator(self, request, queryset):
+        if queryset.count() > 1:
+            self.message_user(request, "Please select only one subnet slot.", level="ERROR")
+            return
+        subnet_slot = queryset.first()
+        install_validator_on_remote_server(
+            subnet_slot.subnet.codename,
+            subnet_slot.blockchain,
+            subnet_slot.netuid,
+            "172.236.101.138",
+            "root",
+            "/root/.ssh/id_rsa",
+            "1234567890",
+        )
+
+    actions = [install_validator]
 
 
 @admin.register(ValidatorInstance)
