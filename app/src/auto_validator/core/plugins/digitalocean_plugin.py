@@ -21,7 +21,7 @@ class DigitalOceanPlugin(BasePlugin):
         }
     
 
-    def create_machine(self, payload):
+    def create_machine(self, payload: dict):
         url = "https://api.digitalocean.com/v2/droplets"
         API_KEY = payload.get("api_key")
         headers = {"Authorization": f"Bearer {API_KEY}"}
@@ -33,7 +33,7 @@ class DigitalOceanPlugin(BasePlugin):
             "name": payload.get("name"),
         }
         response = requests.post(url, headers=headers, json=data, timeout=30)
-        if response.status_code == 200:
+        if response.status_code == 202:
             data = response.json()
             response = {
                 "id": data["id"],
@@ -46,18 +46,18 @@ class DigitalOceanPlugin(BasePlugin):
                 "vcpus": data["size"]["vcpus"],
                 "price": data["size"]["price_hourly"],
             }
-            return response
+            return {"status": "success", "data": response}
         else:
-            return None
+            return {"status": "error", "data": response.json()}
 
-    def destroy_machine(self, payload):
+    def destroy_machine(self, payload: dict):
         droplet_id = payload.get("droplet_id")
         API_KEY = payload.get("api_key")
         url = f"https://api.digitalocean.com/v2/droplets/{droplet_id}"
         headers = {"Authorization": f"Bearer {API_KEY}"}
         response = requests.delete(url, headers=headers, timeout=30)
-        return response.status_code == 200
-
+        return {"status": "success", "data": ""} if response.status_code == 204 else {"status": "error", "data":response.json()}
+        
     def list_available_machines(self):
         url = "https://api.digitalocean.com/v2/sizes"
         response = requests.get(url, timeout=30)
@@ -77,7 +77,7 @@ class DigitalOceanPlugin(BasePlugin):
                 )
             return list_of_machines
         else:
-            return None
+            raise Exception(response.json())
 
     def get_required_fields(self):
         return self.required_fields
