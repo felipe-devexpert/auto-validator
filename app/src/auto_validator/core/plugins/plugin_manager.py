@@ -13,8 +13,8 @@ class PluginManager:
     def get_plugin(self, name):
         return self.plugins.get(name)
 
-    def get_registered_plugins(self):
-        return self.plugins.keys()
+    def get_registered_plugins(self) -> list:
+        return list(self.plugins.keys())
 
 
 plugin_manager = PluginManager()
