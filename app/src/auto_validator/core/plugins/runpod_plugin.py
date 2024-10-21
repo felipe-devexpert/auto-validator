@@ -2,7 +2,7 @@ import requests
 
 from .base_plugin import BasePlugin
 
-class RunpodPlugin(BasePlugin):
+class RunPodPlugin(BasePlugin):
     def __init__(self):
         self.required_fields = {
             "gpuTypeId": {

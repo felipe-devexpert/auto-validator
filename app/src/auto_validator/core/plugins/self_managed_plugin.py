@@ -1,8 +1,8 @@
 from .base_plugin import BasePlugin
 
 
-class SelfManagePlugin(BasePlugin):
-    def __init__(self, client):
+class SelfManagedPlugin(BasePlugin):
+    def __init__(self):
         pass
 
     def create_machine(self, *args, **kwargs):

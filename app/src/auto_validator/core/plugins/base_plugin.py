@@ -7,3 +7,6 @@ class BasePlugin:
 
     def list_available_machines(self, payload):
         raise NotImplementedError("list_available_machines method is not implemented")
+    
+    def list_available_regions(self, payload):
+        raise NotImplementedError("list_available_regions method is not implemented")

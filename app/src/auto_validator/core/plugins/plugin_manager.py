@@ -10,7 +10,7 @@ class PluginManager:
             raise ValueError("Plugin must be a subclass of BasePlugin")
         self.plugins[name] = plugin()
 
-    def get_plugin(self, name):
+    def get_plugin(self, name) -> BasePlugin:
         return self.plugins.get(name)
 
     def get_registered_plugins(self) -> list:
